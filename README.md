@@ -1,13 +1,13 @@
-﻿# Crisp Lit
+# Crisp Lit
 
 A replacement for URP's `Lit` shader that uses a full-quality BRDF instead of URP's
-mobile-optimised approximations â€” while consuming URP's own lighting API, pass structure
+mobile-optimised approximations — while consuming URP's own lighting API, pass structure
 and keyword set, so shadows, Forward+, decals, SSAO, lightmaps and probe volumes keep
 working exactly as before.
 
 ![URP Lit and Crisp Lit rows compared across a smoothness ramp](docs/images/comparison-rig.png)
 
-*Same scene, same lighting, same material parameters. Rows 1â€“2: metal, rows 3â€“4: dielectric,
+*Same scene, same lighting, same material parameters. Rows 1–2: metal, rows 3–4: dielectric,
 smoothness increasing left to right. Rows 2 and 4 are Crisp.*
 
 ## Why this exists
@@ -15,12 +15,12 @@ smoothness increasing left to right. Rows 2 and 4 are Crisp.*
 URP's `Lit` shader was designed to run on phones, and its BRDF reflects that. The
 approximations are sensible for that target and unnecessary on anything with a discrete GPU:
 
-- The visibility term is Kelemen's `1 / (LoHÂ² Â· (roughness + 0.5))` approximation, and the
+- The visibility term is Kelemen's `1 / (LoH² · (roughness + 0.5))` approximation, and the
   Fresnel term is folded into it rather than evaluated. Metals therefore lose their
   characteristic edge tint, and highlights are the wrong shape at grazing angles.
 - There is no multiscatter compensation, so rough metals lose energy and darken. This is the
-  single most visible difference â€” the leftmost spheres in the screenshot above.
-- Indirect specular uses an empirical `surfaceReduction Â· lerp(specular, grazingTerm, fresnel)`
+  single most visible difference — the leftmost spheres in the screenshot above.
+- Indirect specular uses an empirical `surfaceReduction · lerp(specular, grazingTerm, fresnel)`
   fit rather than a split-sum environment BRDF.
 - Ambient occlusion multiplies the diffuse term only, so occluded cavities still receive full
   specular and never look properly recessed.
@@ -36,7 +36,7 @@ Crisp replaces exactly those terms and nothing else.
 | Normal distribution | GGX | GGX |
 | Visibility | Kelemen approximation | Height-correlated Smith |
 | Fresnel | folded into the visibility approximation | Schlick, coloured F0 |
-| Multiscattering | none | energy compensation (Fdez-AgÃ¼era) |
+| Multiscattering | none | energy compensation (Fdez-Agüera) |
 | Diffuse | Lambert | Disney (Burley) |
 | Indirect specular | empirical fit | split-sum with a preintegrated DFG LUT |
 | Occlusion | diffuse only | specular occlusion + horizon occlusion |
@@ -63,26 +63,26 @@ noticeably more sky at grazing angles.
 ## Performance
 
 Measured on a Radeon RX 9070 XT, D3D12, in a deliberately fragment-bound test: one full-screen
-quad into a 4096Ã—4096 RGBAHalf render target (16.8M fragments), asynchronous shader compilation
+quad into a 4096×4096 RGBAHalf render target (16.8M fragments), asynchronous shader compilation
 disabled, 15 warm-up renders followed by 40 timed renders, median of three interleaved rounds.
 
 | Scenario | URP Lit | Crisp Lit | Ratio |
 | --- | --- | --- | --- |
-| One directional light, no shadows | 4.86 ms | 4.99 ms | 1.03Ã— |
-| Plus 8 point lights (Forward+) | 6.20 ms | 6.54 ms | 1.06Ã— |
+| One directional light, no shadows | 4.86 ms | 4.99 ms | 1.03× |
+| Plus 8 point lights (Forward+) | 6.20 ms | 6.54 ms | 1.06× |
 
 Compiled fragment size for the `ForwardLit` pass (DXBC, D3D):
 
 | Variant | URP Lit | Crisp Lit | Ratio |
 | --- | --- | --- | --- |
-| Bare | 3190 B | 5362 B | 1.68Ã— |
-| Normal map + mask map | 4018 B | 6426 B | 1.60Ã— |
-| Plus main light shadows | 10486 B | 12866 B | 1.23Ã— |
-| Plus Forward+ additional lights | 29586 B | 33878 B | 1.15Ã— |
+| Bare | 3190 B | 5362 B | 1.68× |
+| Normal map + mask map | 4018 B | 6426 B | 1.60× |
+| Plus main light shadows | 10486 B | 12866 B | 1.23× |
+| Plus Forward+ additional lights | 29586 B | 33878 B | 1.15× |
 
 The extra arithmetic is roughly a hundred instructions per pixel plus a few per light. It looks
 significant against a bare variant and disappears into the noise once shadow sampling, GI and
-the light loop are present â€” which is every real material. The packed mask map also removes one
+the light loop are present — which is every real material. The packed mask map also removes one
 texture fetch relative to URP, which offsets part of the ALU cost.
 
 These are synthetic numbers from one GPU and one scene. Measure your own content before
@@ -129,8 +129,8 @@ occlusion data comes from.
 
 Two entries under `Tools/Crisp`:
 
-- **Convert Selected Materials** â€” converts the URP Lit materials selected in the Project window.
-- **Convert Scene Materials** â€” scans the open scene's renderers, lists the URP Lit materials it
+- **Convert Selected Materials** — converts the URP Lit materials selected in the Project window.
+- **Convert Scene Materials** — scans the open scene's renderers, lists the URP Lit materials it
   found, and converts them after confirmation.
 
 Both operate on the material assets themselves, so every user of a converted material is
@@ -141,7 +141,7 @@ specular workflow are skipped with a message; detail maps are dropped with a war
 
 ### DFG LUT
 
-The split-sum environment BRDF is read from a preintegrated 128Ã—128 lookup table shipped with the
+The split-sum environment BRDF is read from a preintegrated 128×128 lookup table shipped with the
 package and bound globally at load. If it is ever missing the shader falls back to Karis'
 analytic approximation, so specular can never collapse to black in a build. `Tools/Crisp/Generate
 DFG LUT` regenerates it; you only need this if you have the package embedded and want to change
@@ -174,7 +174,7 @@ pipeline is taken from URP directly:
 - Pass names, `LightMode` tags and the `UniversalMaterialType` tag match URP's.
 - The shadow caster, depth, depth-normals and meta passes are URP's own pass files, included
   rather than forked. That is why `CrispLitInput.hlsl` exposes
-  `InitializeStandardLitSurfaceData` under exactly that name â€” it is the contract those files
+  `InitializeStandardLitSurfaceData` under exactly that name — it is the contract those files
   expect.
 
 Upgrading to a new URP version means diffing the keyword block against the new `Lit.shader` and
@@ -190,12 +190,12 @@ recompiling. Releases are tagged against the URP version they were verified with
 
 The techniques are standard; the papers are worth reading if you want to change them.
 
-- Heitz, *Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs* (2014) â€” height-correlated Smith.
-- Fdez-AgÃ¼era, *A Multiple-Scattering Microfacet Model for Real-Time Image-Based Lighting* (2019) â€” energy compensation.
-- Karis, *Real Shading in Unreal Engine 4* (2013) â€” split-sum, analytic DFG fallback.
-- Burley, *Physically Based Shading at Disney* (2012) â€” diffuse term.
-- Lagarde & de Rousiers, *Moving Frostbite to PBR* (2014) â€” specular occlusion.
-- Chan, *Material Advances in Call of Duty: WWII* (2018) â€” micro-shadowing.
+- Heitz, *Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs* (2014) — height-correlated Smith.
+- Fdez-Agüera, *A Multiple-Scattering Microfacet Model for Real-Time Image-Based Lighting* (2019) — energy compensation.
+- Karis, *Real Shading in Unreal Engine 4* (2013) — split-sum, analytic DFG fallback.
+- Burley, *Physically Based Shading at Disney* (2012) — diffuse term.
+- Lagarde & de Rousiers, *Moving Frostbite to PBR* (2014) — specular occlusion.
+- Chan, *Material Advances in Call of Duty: WWII* (2018) — micro-shadowing.
 - Tokuyoshi & Kaplanyan, *Improved Geometric Specular Antialiasing* (2019).
 
 ## License
