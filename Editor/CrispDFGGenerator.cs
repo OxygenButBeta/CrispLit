@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 
 namespace Crisp.Rendering.Editor
@@ -94,7 +94,7 @@ namespace Crisp.Rendering.Editor
 
         static float GSmithIBL(float nov, float nol, float roughness)
         {
-            // Karis IBL k'si (a^2/2) - split-sum turetimiyle tutarli olan varyant
+            // Karis' IBL k (a^2/2) - the variant consistent with the split-sum derivation
             float k = roughness * roughness / 2f;
             float gv = nov / (nov * (1f - k) + k);
             float gl = nol / (nol * (1f - k) + k);

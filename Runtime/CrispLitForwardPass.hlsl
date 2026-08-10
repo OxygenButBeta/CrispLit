@@ -1,8 +1,8 @@
-﻿#ifndef CRISP_LIT_FORWARD_PASS_INCLUDED
+#ifndef CRISP_LIT_FORWARD_PASS_INCLUDED
 #define CRISP_LIT_FORWARD_PASS_INCLUDED
 
-// URP LitForwardPass'in sadelesmis kopyasi (parallax/detail yok). positionWS her zaman
-// interpolate edilir; tek fark fragment sonunda CrispFragmentPBR cagrisi ve spec AA.
+// A trimmed copy of URP's LitForwardPass (no parallax, no detail maps). positionWS is always
+// interpolated; the only differences are the specular AA step and the CrispFragmentPBR call.
 
 #include "CrispLighting.hlsl"
 

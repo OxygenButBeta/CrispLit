@@ -1,9 +1,9 @@
-﻿#ifndef CRISP_LIGHTING_INCLUDED
+#ifndef CRISP_LIGHTING_INCLUDED
 #define CRISP_LIGHTING_INCLUDED
 
-// UniversalFragmentPBR'in birebir yapisal kopyasi; sadece BRDF/GI cagrilari Crisp cekirdegine
-// yonlendirildi. Isik/golge/decal/SSAO/cluster-loop URP API'sinden geldigi icin pipeline
-// ozellikleri ve 3rd party entegrasyonlar aynen calisir. Clear coat destegi bilincli olarak yok.
+// A structural copy of UniversalFragmentPBR; only the BRDF and GI calls are redirected to the
+// Crisp core. Lights, shadows, decals, SSAO and the cluster loop all come from URP's own
+// API, so pipeline features and third-party integrations keep working. No clear coat, by design.
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 #include "CrispBRDF.hlsl"

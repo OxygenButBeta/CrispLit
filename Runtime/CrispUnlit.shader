@@ -1,5 +1,5 @@
-﻿// Proje standardi unlit shader. Pass yapisi URP 17.3 Unlit.shader ile ayni kontrati izler
-// (ana pass LightMode'suz = SRPDefaultUnlit, DepthOnly, DepthNormalsOnly).
+// Project-standard unlit shader. Follows the same pass contract as URP 17.3's Unlit.shader
+// (main pass with no LightMode tag = SRPDefaultUnlit, plus DepthOnly and DepthNormalsOnly).
 Shader "Crisp/Unlit"
 {
     Properties

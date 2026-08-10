@@ -1,26 +1,26 @@
-﻿#ifndef CRISP_BRDF_INCLUDED
+#ifndef CRISP_BRDF_INCLUDED
 #define CRISP_BRDF_INCLUDED
 
-// Crisp kalite cekirdegi. URP Lit'in mobil-optimize terimlerinin yerine:
-// - Tam GGX D + height-correlated Smith V + gercek Schlick Fresnel (URP: Kelemen approx + 1/LoH)
-// - Multiscatter energy compensation (Fdez-Aguera 2019) - direct + indirect spekuler
-// - Karis analitik env-BRDF (URP: surfaceReduction/grazingTerm yaklastirmasi)
+// Crisp quality core. Replaces URP Lit's mobile-optimised terms with:
+// - Full GGX D + height-correlated Smith V + real Schlick Fresnel (URP: Kelemen approx + 1/LoH)
+// - Multiscatter energy compensation (Fdez-Aguera 2019) on direct and indirect specular
+// - Split-sum environment BRDF from a preintegrated LUT (URP: an empirical surfaceReduction fit)
 // - Specular occlusion (Lagarde) + horizon occlusion
 // - Geometric specular AA (Tokuyoshi & Kaplanyan 2019)
-// Bu dosya URP'nin BRDFData'sini oldugu gibi kullanir; interop yuzeyi degismez.
+// This file consumes URP's BRDFData as-is, so the interop surface is unchanged.
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
 
-// Preintegrated split-sum DFG LUT (x=NoV, y=perceptualRoughness). CrispDFG.cs global olarak
-// bind eder; bind yoksa (_CrispDFGBound=0) Karis analitik yaklastirmasina duser ki build'de
-// LUT kaybolursa spekulerlik siyaha cokmesin.
+// Preintegrated split-sum DFG LUT (x = NoV, y = perceptualRoughness). CrispDFGBinder.cs binds it
+// globally; when it is absent (_CrispDFGBound = 0) we fall back to Karis' analytic
+// approximation, so specular can never collapse to black in a build.
 TEXTURE2D(_CrispDFG);
 SAMPLER(sampler_CrispDFG);
 float _CrispDFGBound;
 
 half2 CrispEnvBRDFApprox(half perceptualRoughness, half NoV)
 {
-    // Karis, "Physically Based Shading on Mobile" analitik DFG yaklastirmasi
+    // Karis, "Physically Based Shading on Mobile" - analytic DFG approximation
     const half4 c0 = half4(-1.0, -0.0275, -0.572, 0.022);
     const half4 c1 = half4(1.0, 0.0425, 1.04, -0.04);
     half4 r = perceptualRoughness * c0 + c1;
@@ -48,7 +48,7 @@ half3 CrispEnergyCompensation(half3 specular, half perceptualRoughness, half NoV
 
 half CrispMicroShadow(half NoL, half ao)
 {
-    // Chan, "Material Advances in Call of Duty: WWII" - AO'dan turetilen mikro golge konisi
+    // Chan, "Material Advances in Call of Duty: WWII" - AO-derived micro-shadow cone
     half aperture = rsqrt(max(half(1e-4), half(1.0) - ao));
     half shadow = saturate(NoL * aperture);
     return shadow * shadow;
@@ -104,7 +104,7 @@ half CrispSpecularOcclusion(half NoV, half ao, half roughness)
 
 half CrispHorizonOcclusion(half3 reflectVector, half3 normalWS)
 {
-    // Yansima vektoru yuzeyin altina sarktiginda env spekuleri karartir (normal map kaynakli sizinti)
+    // Darkens environment specular where the reflection vector dips below the surface
     half horizon = saturate(1.0 + dot(reflectVector, normalWS));
     return horizon * horizon;
 }
@@ -137,7 +137,7 @@ half3 CrispGlobalIllumination(BRDFData brdfData, half3 bakedGI, half occlusion, 
 
 half CrispApplySpecularAA(half3 geometricNormalWS, half perceptualSmoothness, half screenSpaceVariance, half varianceThreshold)
 {
-    // Tokuyoshi & Kaplanyan normal-varyans filtresi: kavisli/uzak yuzeylerde spekuler kaynamayi keser
+    // Tokuyoshi & Kaplanyan normal-variance filter: stops specular boiling on curved/distant surfaces
     float3 du = ddx(geometricNormalWS);
     float3 dv = ddy(geometricNormalWS);
     float variance = screenSpaceVariance * (dot(du, du) + dot(dv, dv));

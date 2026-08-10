@@ -1,4 +1,4 @@
-﻿#ifndef CRISP_LIT_INPUT_INCLUDED
+#ifndef CRISP_LIT_INPUT_INCLUDED
 #define CRISP_LIT_INPUT_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -7,7 +7,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DBuffer.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/DebugMipmapStreamingMacros.hlsl"
 
-// SRP batcher: layout tum pass'lerde ayni kalmali, property'leri ifdef'leme.
+// SRP Batcher: the layout must stay identical across passes - never ifdef these properties.
 CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
 float4 _BaseMap_TexelSize;
@@ -24,11 +24,11 @@ half _Surface;
 UNITY_TEXTURE_STREAMING_DEBUG_VARS;
 CBUFFER_END
 
-// MADS mask map (HDRP paketlemesiyle ayni): R=Metallic, G=AO, B=Detail mask (rezerve), A=Smoothness
+// MADS mask map (same packing as HDRP): R = Metallic, G = AO, B = Detail mask (reserved), A = Smoothness
 TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
 
-// Isim URP'nin LitMetaPass/DepthNormals gibi paylasilan pass dosyalarinin bekledigi kontrat;
-// bu sayede o pass'ler fork'lanmadan aynen kullaniliyor.
+// This name is the contract URP's shared pass files (LitMetaPass, LitDepthNormalsPass) expect,
+// which is what lets those passes be included rather than forked.
 inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfaceData)
 {
     outSurfaceData = (SurfaceData)0;

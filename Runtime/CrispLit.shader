@@ -1,7 +1,7 @@
-﻿// Proje standardi lit shader â€” URP Lit'in yerine gecer.
-// KONTRAT: Pass isimleri, LightMode'lar ve asagidaki multi_compile bloklari URP 17.3
-// Lit.shader'dan birebir alinmistir; URP surum yukseltmelerinde paket Lit.shader'i ile
-// diff'lenerek guncellenmelidir. shader_feature'lar disindaki pragma'lari degistirme.
+// Project-standard lit shader - a drop-in replacement for URP's Lit.
+// CONTRACT: the pass names, LightMode tags and multi_compile blocks below are copied
+// verbatim from URP 17.3's Lit.shader. On a URP upgrade, diff them against the new
+// package Lit.shader. Do not change any pragma other than the shader_feature lines.
 Shader "Crisp/Lit"
 {
     Properties
@@ -92,7 +92,7 @@ Shader "Crisp/Lit"
             #pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
 
             // -------------------------------------
-            // Universal Pipeline keywords (URP 17.3 Lit ile senkron)
+            // Universal Pipeline keywords (kept in sync with URP 17.3 Lit)
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile _ EVALUATE_SH_MIXED EVALUATE_SH_VERTEX

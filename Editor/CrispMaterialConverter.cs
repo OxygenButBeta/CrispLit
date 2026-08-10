@@ -15,7 +15,7 @@ namespace Crisp.Rendering.Editor
         static void ConvertSelected()
         {
             var materials = Selection.GetFiltered<Material>(SelectionMode.Assets);
-            Run(materials, "seçili");
+            Run(materials, "selected");
         }
 
         [MenuItem("Tools/Crisp/Convert Selected Materials", true)]
@@ -36,18 +36,18 @@ namespace Crisp.Rendering.Editor
 
             if (found.Count == 0)
             {
-                EditorUtility.DisplayDialog("Crisp Converter", "Sahnede URP Lit materyal bulunamadı.", "Tamam");
+                EditorUtility.DisplayDialog("Crisp Converter", "No URP Lit materials found in the open scene.", "OK");
                 return;
             }
 
             string list = string.Join("\n", found.Take(15).Select(m => "• " + m.name));
             if (found.Count > 15) list += $"\n… (+{found.Count - 15})";
             if (!EditorUtility.DisplayDialog("Crisp Converter",
-                    $"Sahnede {found.Count} URP Lit materyal bulundu:\n\n{list}\n\nBunlar asset olarak çevrilecek (projede bu materyali kullanan HER yer etkilenir). Devam?",
-                    "Çevir", "Vazgeç"))
+                    $"Found {found.Count} URP Lit material(s) in this scene:\n\n{list}\n\nThey are converted as assets, so every user of them in the project is affected. Continue?",
+                    "Convert", "Cancel"))
                 return;
 
-            Run(found, "sahnedeki");
+            Run(found, "scene");
         }
 
         static void Run(IEnumerable<Material> materials, string label)
@@ -61,12 +61,12 @@ namespace Crisp.Rendering.Editor
                 var result = Convert(mat, out reason);
                 if (result == ConvertResult.Converted) converted++;
                 else if (result == ConvertResult.ConvertedWithMask) { converted++; packed++; }
-                else { skipped++; log.AppendLine($"  atlandı: {mat.name} ({reason})"); }
+                else { skipped++; log.AppendLine($"  skipped: {mat.name} ({reason})"); }
             }
 
-            string summary = $"Crisp Converter: {label} {converted} materyal çevrildi ({packed} MaskMap paketlendi), {skipped} atlandı.";
+            string summary = $"Crisp Converter: converted {converted} {label} material(s) ({packed} mask map(s) packed), skipped {skipped}.";
             Debug.Log(summary + (log.Length > 0 ? "\n" + log : ""));
-            EditorUtility.DisplayDialog("Crisp Converter", summary, "Tamam");
+            EditorUtility.DisplayDialog("Crisp Converter", summary, "OK");
         }
 
         enum ConvertResult { Converted, ConvertedWithMask, Skipped }
@@ -74,17 +74,17 @@ namespace Crisp.Rendering.Editor
         static ConvertResult Convert(Material mat, out string reason)
         {
             reason = null;
-            if (mat.shader == null) { reason = "shader yok"; return ConvertResult.Skipped; }
-            if (mat.shader.name == CrispLitName) { reason = "zaten Crisp/Lit"; return ConvertResult.Skipped; }
-            if (mat.shader.name != UrpLitName) { reason = "URP Lit değil: " + mat.shader.name; return ConvertResult.Skipped; }
+            if (mat.shader == null) { reason = "no shader"; return ConvertResult.Skipped; }
+            if (mat.shader.name == CrispLitName) { reason = "already Crisp/Lit"; return ConvertResult.Skipped; }
+            if (mat.shader.name != UrpLitName) { reason = "not URP Lit: " + mat.shader.name; return ConvertResult.Skipped; }
             if (mat.HasProperty("_WorkflowMode") && mat.GetFloat("_WorkflowMode") < 0.5f)
             {
-                reason = "specular workflow desteklenmiyor";
+                reason = "specular workflow is not supported";
                 return ConvertResult.Skipped;
             }
 
             var crisp = Shader.Find(CrispLitName);
-            if (crisp == null) { reason = "Crisp/Lit bulunamadı"; return ConvertResult.Skipped; }
+            if (crisp == null) { reason = "Crisp/Lit shader not found"; return ConvertResult.Skipped; }
 
             var msMap = mat.GetTexture("_MetallicGlossMap") as Texture2D;
             var aoMap = mat.HasProperty("_OcclusionMap") ? mat.GetTexture("_OcclusionMap") as Texture2D : null;
@@ -92,12 +92,12 @@ namespace Crisp.Rendering.Editor
             bool smoothFromAlbedo = mat.HasProperty("_SmoothnessTextureChannel") && mat.GetFloat("_SmoothnessTextureChannel") > 0.5f;
             bool hasDetail = mat.GetTexture("_DetailAlbedoMap") != null || mat.GetTexture("_DetailNormalMap") != null;
             if (hasDetail)
-                Debug.LogWarning($"Crisp Converter: '{mat.name}' detail map kullanıyor — Crisp/Lit'te detail yok, düşürüldü.", mat);
+                Debug.LogWarning($"Crisp Converter: '{mat.name}' uses detail maps, which Crisp/Lit does not support - they were dropped.", mat);
 
             Undo.RecordObject(mat, "Convert to Crisp Lit");
 
-            // Ayni isimli property'ler (_BaseMap/_BaseColor/_BumpMap/_Smoothness/_Surface/...) shader
-            // degisiminde serialize edilmis degerlerinden otomatik tasinir.
+            // Identically named properties (_BaseMap/_BaseColor/_BumpMap/_Smoothness/_Surface/...) carry
+            // over automatically from their serialised values when the shader is swapped.
             mat.shader = crisp;
 
             foreach (var stale in new[]
@@ -115,7 +115,7 @@ namespace Crisp.Rendering.Editor
                 if (packedTex != null)
                 {
                     mat.SetTexture("_MaskMap", packedTex);
-                    // URP, map varken _Metallic slider'ini yok sayar; Crisp mask.r * _Metallic carpar.
+                    // URP ignores the _Metallic slider when a map is present; Crisp multiplies mask.r by it.
                     if (msMap != null) mat.SetFloat("_Metallic", 1f);
                     if (smoothFromAlbedo) mat.SetFloat("_Smoothness", mat.GetFloat("_Smoothness"));
                 }
@@ -129,7 +129,7 @@ namespace Crisp.Rendering.Editor
         static Texture2D PackMaskMap(Material sourceMat, Texture2D msMap, Texture2D aoMap, Texture2D albedoForSmoothness)
         {
             var packer = Shader.Find("Hidden/Crisp/MaskMapPacker");
-            if (packer == null) { Debug.LogError("Crisp Converter: MaskMapPacker shader bulunamadı."); return null; }
+            if (packer == null) { Debug.LogError("Crisp Converter: MaskMapPacker shader not found."); return null; }
 
             int width = Mathf.Max(msMap != null ? msMap.width : 0, aoMap != null ? aoMap.width : 0,
                                   albedoForSmoothness != null ? albedoForSmoothness.width : 0, 4);
