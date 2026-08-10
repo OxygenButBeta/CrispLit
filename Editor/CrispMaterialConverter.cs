@@ -157,7 +157,7 @@ namespace Crisp.Rendering.Editor
             Object.DestroyImmediate(blitMat);
 
             string matPath = AssetDatabase.GetAssetPath(sourceMat);
-            string folder = string.IsNullOrEmpty(matPath) ? "Assets/Game/Materials/CrispConverted" : Path.GetDirectoryName(matPath).Replace('\\', '/');
+            string folder = string.IsNullOrEmpty(matPath) ? "Assets/CrispConverted" : Path.GetDirectoryName(matPath).Replace('\\', '/');
             if (!AssetDatabase.IsValidFolder(folder))
             {
                 Directory.CreateDirectory(folder);

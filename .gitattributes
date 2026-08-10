@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.asset -text
+*.shader text eol=lf
+*.hlsl text eol=lf
+*.cs text eol=lf
