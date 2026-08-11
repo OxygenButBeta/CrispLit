@@ -17,6 +17,11 @@ back to forward.
 `Crisp/Unlit` needed no change: its main pass is unnamed, so it is treated as `SRPDefaultUnlit`,
 which deferred renderers already draw forward-only.
 
+Also fixed installation from a git URL. The `.meta` files for both assembly definitions, every
+folder, and the non-code files at the root were never committed. A package installed from a git
+URL is read-only, so Unity cannot write the missing ones and assigns fresh GUIDs on every import,
+which breaks the assembly references the shaders and inspector rely on.
+
 ## 1.0.0
 
 First release. Built and verified against Unity 6000.3.14f1 with URP 17.3.0.

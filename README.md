@@ -2,8 +2,9 @@
 
 A replacement for URP's `Lit` shader that uses a full-quality BRDF instead of URP's
 mobile-optimised approximations — while consuming URP's own lighting API, pass structure
-and keyword set, so shadows, Forward+, decals, SSAO, lightmaps and probe volumes keep
-working exactly as before.
+and keyword set, so shadows, decals, SSAO, lightmaps and probe volumes keep working exactly
+as before. Works under forward, Forward+ and deferred renderers; see
+[Deferred renderers](#deferred-renderers).
 
 ![URP Lit and Crisp Lit rows compared across a smoothness ramp](docs/images/comparison-rig.png)
 
@@ -102,6 +103,10 @@ Or add it to `Packages/manifest.json`:
 ```json
 "com.crisp.lit": "https://github.com/OxygenButBeta/CrispLit.git"
 ```
+
+Cloning into `Packages/com.crisp.lit`, or dropping the folder into `Assets`, works too. The DFG
+LUT is loaded through `Resources` and both assembly definitions are auto-referenced, so there is
+nothing to wire up either way.
 
 ## Usage
 
