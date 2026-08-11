@@ -61,10 +61,13 @@ Shader "Crisp/Lit"
 
         Pass
         {
+            // UniversalForwardOnly, not UniversalForward: with a deferred renderer URP draws only
+            // UniversalGBuffer and UniversalForwardOnly for opaques, so a UniversalForward-tagged
+            // pass is never executed there. This is the same contract URP's own ComplexLit uses.
             Name "ForwardLit"
             Tags
             {
-                "LightMode" = "UniversalForward"
+                "LightMode" = "UniversalForwardOnly"
             }
 
             Blend[_SrcBlend][_DstBlend], [_SrcBlendAlpha][_DstBlendAlpha]
@@ -136,6 +139,77 @@ Shader "Crisp/Lit"
             ENDHLSL
         }
 
+        // Never lights the surface - ForwardLit does that in the forward-only pass, and deferred
+        // lighting overdraws it there. This exists so consumers that re-read the GBuffer (URP's own
+        // debug views, screen-space GI/AO packages that draw a UniversalGBuffer renderer list) see
+        // Crisp surfaces instead of holes. URP's ComplexLit carries the pass for the same reason.
+        Pass
+        {
+            Name "GBuffer"
+            Tags
+            {
+                "LightMode" = "UniversalGBuffer"
+            }
+
+            ZWrite[_ZWrite]
+            ZTest LEqual
+            Cull[_Cull]
+
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma exclude_renderers gles3 glcore
+
+            #pragma vertex LitGBufferPassVertex
+            #pragma fragment LitGBufferPassFragment
+
+            // -------------------------------------
+            // Material Keywords
+            #pragma shader_feature_local _NORMALMAP
+            #pragma shader_feature_local _RECEIVE_SHADOWS_OFF
+            #pragma shader_feature_local_fragment _ALPHATEST_ON
+            #pragma shader_feature_local_fragment _EMISSION
+            #pragma shader_feature_local_fragment _MASKMAP
+            #pragma shader_feature_local_fragment _SPECULARHIGHLIGHTS_OFF
+            #pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
+
+            // -------------------------------------
+            // Universal Pipeline keywords
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BOX_PROJECTION
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT
+            #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
+            #pragma multi_compile_fragment _ _RENDER_PASS_ENABLED
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #pragma multi_compile _ EVALUATE_SH_MIXED EVALUATE_SH_VERTEX
+            #pragma multi_compile_fragment _ _SCREEN_SPACE_IRRADIANCE
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
+
+            // -------------------------------------
+            // Unity defined keywords
+            #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
+            #pragma multi_compile _ SHADOWS_SHADOWMASK
+            #pragma multi_compile _ DIRLIGHTMAP_COMBINED
+            #pragma multi_compile _ LIGHTMAP_ON
+            #pragma multi_compile_fragment _ LIGHTMAP_BICUBIC_SAMPLING
+            #pragma multi_compile_fragment _ REFLECTION_PROBE_ROTATION
+            #pragma multi_compile _ DYNAMICLIGHTMAP_ON
+            #pragma multi_compile _ USE_LEGACY_LIGHTMAPS
+            #pragma multi_compile _ LOD_FADE_CROSSFADE
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl"
+
+            //--------------------------------------
+            // GPU Instancing
+            #pragma multi_compile_instancing
+            #pragma instancing_options renderinglayer
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
+
+            #include "CrispLitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitGBufferPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "ShadowCaster"
@@ -200,10 +274,12 @@ Shader "Crisp/Lit"
 
         Pass
         {
-            Name "DepthNormals"
+            // DepthNormalsOnly rather than DepthNormals: the forward renderer accepts both tags,
+            // but the deferred renderer's prepass only draws DepthNormalsOnly.
+            Name "DepthNormalsOnly"
             Tags
             {
-                "LightMode" = "DepthNormals"
+                "LightMode" = "DepthNormalsOnly"
             }
 
             ZWrite On
@@ -219,6 +295,7 @@ Shader "Crisp/Lit"
             #pragma shader_feature_local _ALPHATEST_ON
 
             #pragma multi_compile _ LOD_FADE_CROSSFADE
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
 

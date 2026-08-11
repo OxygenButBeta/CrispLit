@@ -151,8 +151,9 @@ the integration parameters.
 
 Deliberately not implemented, because the point was a better base material rather than a superset:
 
-- **Forward+ only.** There is no `UniversalGBuffer` pass, so materials render in the forward path
-  even when the renderer is set to deferred.
+- **Always lit forward, whatever the renderer.** A deferred renderer would shade a GBuffer with
+  URP's BRDF, which is the thing this package exists to replace, so Crisp never takes that path.
+  See *Deferred renderers* below for what that costs.
 - **Metallic workflow only.** No specular workflow.
 - No detail maps, no parallax, no clear coat, no anisotropy, no transmission or sheen.
 - Not tested on mobile or WebGL. The BRDF is aimed at hardware where the extra arithmetic is free;
@@ -171,14 +172,31 @@ pipeline is taken from URP directly:
 - The `multi_compile` block in `CrispLit.shader` is copied verbatim from URP's `Lit.shader` for
   the target version. This is the actual compatibility surface: if a renderer feature toggles a
   keyword the shader does not compile a variant for, the feature silently does nothing.
-- Pass names, `LightMode` tags and the `UniversalMaterialType` tag match URP's.
-- The shadow caster, depth, depth-normals and meta passes are URP's own pass files, included
-  rather than forked. That is why `CrispLitInput.hlsl` exposes
+- Pass names, `LightMode` tags and the `UniversalMaterialType` tag match URP's — specifically
+  those of `ComplexLit`, the shader URP itself ships for materials its deferred path cannot light.
+- The shadow caster, depth, depth-normals, GBuffer and meta passes are URP's own pass files,
+  included rather than forked. That is why `CrispLitInput.hlsl` exposes
   `InitializeStandardLitSurfaceData` under exactly that name — it is the contract those files
   expect.
 
 Upgrading to a new URP version means diffing the keyword block against the new `Lit.shader` and
 recompiling. Releases are tagged against the URP version they were verified with.
+
+## Deferred renderers
+
+Crisp works under a deferred renderer, but not by being deferred. Three tags carry that:
+
+| Pass | Tag | Why |
+| --- | --- | --- |
+| `ForwardLit` | `UniversalForwardOnly` | A deferred renderer draws opaques through `UniversalGBuffer` and `UniversalForwardOnly` only. A `UniversalForward` pass is never reached there — the material would not draw at all, not fall back. |
+| `DepthNormalsOnly` | `DepthNormalsOnly` | The forward prepass accepts `DepthNormals` and `DepthNormalsOnly`; the deferred prepass accepts only the latter. Without it, SSAO, decals and normal-reading renderer features see nothing. |
+| `GBuffer` | `UniversalGBuffer` | Fills the GBuffer so anything that re-reads it sees the surface rather than a hole — URP's rendering debugger, and screen-space GI/AO packages that draw their own `UniversalGBuffer` renderer list to reconstruct albedo. Never lights the surface. |
+
+The cost under a deferred renderer is that opaque Crisp geometry is drawn twice: once into the
+GBuffer, then again in the forward-only pass, which overdraws whatever URP's deferred lighting
+produced for those pixels. Under Forward+ the GBuffer pass is not scheduled by URP at all and
+costs nothing unless a renderer feature asks for it. `ComplexLit` makes the same trade for the
+same reason.
 
 ## Planned
 

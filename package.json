@@ -1,6 +1,6 @@
 {
   "name": "com.crisp.lit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Crisp Lit",
   "description": "A drop-in replacement for URP's Lit shader with a full-quality BRDF: height-correlated Smith visibility, real Schlick Fresnel, multiscatter energy compensation, Disney diffuse, specular occlusion and geometric specular anti-aliasing. Uses URP's own lighting API and keyword set, so shadows, Forward+, decals, SSAO, lightmaps and probe volumes keep working.",
   "unity": "6000.3",
